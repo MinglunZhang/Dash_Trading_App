@@ -6,9 +6,9 @@ from bs4 import BeautifulSoup
 # Seconds/Day
 sec_per_day = 86400
 # The start date of the data fetch
-data_start_date = '1.1.2015'
+data_start_date = '1.12.2015'
 # The end date of the data fetch
-data_end_date = '1.1.2020'
+data_end_date = '31.12.2020'
 # The stock chosen to analyze
 target_stock = "IVV"
 
@@ -53,10 +53,19 @@ def fetch_historical_data(stock, start, end):
 
 # Use close price of each day to calculate average price
 def get_average_price(trade_date, num_days, table):
+    high = table['High'].iloc[trade_date - num_days:trade_date]
+    low = table['Low'].iloc[trade_date - num_days:trade_date]
+    open = table['Open'].iloc[trade_date - num_days:trade_date]
     close = table['Close*'].iloc[trade_date - num_days:trade_date]
+    ad_close = table['Adj Close**'].iloc[trade_date - num_days:trade_date]
     total = 0.0
-    for c in close:
-        total += float(c)
+    for idx in range(0, num_days):
+        current_high = float(high.iloc[idx])
+        current_low = float(low.iloc[idx])
+        current_open = float(open.iloc[idx])
+        current_close = float(close.iloc[idx])
+        current_adjust_close = float(ad_close.iloc[idx])
+        total += (current_close + current_open + current_high + current_low + current_adjust_close) / 5
     return total / num_days
 
 
@@ -71,6 +80,7 @@ def get_signal(current_trade_date, short_term, long_term, table):
         return "BUY"
     elif short_avg <= long_avg and pre_short_avg > pre_long_avg:
         return "SELL"
+    # todo: add more signal
     return "HOLD"
 
 
@@ -78,12 +88,15 @@ def get_signal(current_trade_date, short_term, long_term, table):
 def trade(current_cash, current_share, current_trade_date, table, short_term, long_term):
     signal = get_signal(current_trade_date, short_term, long_term, table)
     # Spend all to buy, sell all for cash or stay on hold
+    # todo: adjust the purchase and sell rate
     if signal == "BUY":
-        current_share += current_cash / float(table['Open'].iloc[current_trade_date])
-        current_cash = 0
+        cost = current_cash / 2
+        current_share += cost / float(table['Open'].iloc[current_trade_date])
+        current_cash -= cost
     elif signal == "SELL":
-        current_cash += current_share * float(table['Open'].iloc[current_trade_date])
-        current_share = 0
+        amount = current_share / 5
+        current_cash += amount * float(table['Open'].iloc[current_trade_date])
+        current_share -= amount
     return current_cash, current_share
 
 
@@ -92,9 +105,11 @@ def back_test(table, short_term, long_term):
     current_cash = 10000.0
     current_share = 0.0
     # Start from day with full long average
-    trade_start_date = long_term
+    trade_start_date = 30 + 1
     # End at the last row in the table
     trade_end_date = len(table) - 1
+    print("Start Trading Date: " + str(table['Date'].iloc[trade_start_date]))
+    print("End Trading Date: " + str(table['Date'].iloc[trade_end_date]))
     print("Initial Cash: " + str(current_cash))
     # Open price on the first day and the close price on the last day
     sell_price = float(table['Close*'].iloc[trade_end_date])
@@ -118,8 +133,9 @@ def main():
     # mostrtn = 0
     # s = 0
     # l = 0
-    # for shortP in range(1, 40):
-    #     for longP in range(shortP + 1, 100):
+    # for shortP in range(5, 10):
+    #     print(shortP)
+    #     for longP in range(20, 30):
     #         rtn = back_test(table, shortP, longP)
     #         if (rtn > mostrtn):
     #             mostrtn = rtn
@@ -128,7 +144,12 @@ def main():
     # print(mostrtn)
     # print(s)
     # print(l)
-    back_test(table, 2, 10)
+    back_test(table, 7, 20)
+
+
+
+
+
 
 if __name__ == "__main__":
     main()
