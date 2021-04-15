@@ -4,13 +4,7 @@ import dash
 import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
-# import html as html
 import plotly.express as px
-from dash.dependencies import Input, Output, State
-import pandas as pd
-from os import listdir, remove
-import pickle
-from time import sleep
 
 # Make a Dash app!
 from src.backtest import backtest

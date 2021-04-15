@@ -7,7 +7,6 @@ file_path = '../data/IVV.csv'
 init_cash = 10000.0
 sec_per_day = 86400
 
-
 def get_average(idx, n, table):
     high = table['High']
     low = table['Low']
