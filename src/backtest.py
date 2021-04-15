@@ -1,11 +1,15 @@
 from datetime import datetime
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
+import numpy as np
+from numpy.linalg import LinAlgError
 
 file_path = '../data/IVV.csv'
 init_cash = 10000.0
 sec_per_day = 86400
+min_short = 5
+max_short = 7
+min_long = 10
+max_long = 13
 
 def get_average(idx, n, table):
     high = table['High']
@@ -19,14 +23,29 @@ def get_average(idx, n, table):
 
 
 def get_signal(idx, table):
-    short = get_average(idx, 5, table)
-    long = get_average(idx, 10, table)
-    pshort = get_average(idx - 1, 5, table)
-    plong = get_average(idx - 1, 10, table)
-    if short >= long and pshort <= plong:
-        return "BUY"
-    elif short <= long and pshort >= plong:
-        return "SELL"
+    buy = 0
+    sell = 0
+    vwap = float(table['VWAP'].iloc[idx - 1])
+    for short_n in range(min_short, max_short):
+        for long_n in range(min_long, max_long):
+            short = get_average(idx, short_n, table)
+            long = get_average(idx, long_n, table)
+            pshort = get_average(idx - 1, short_n, table)
+            plong = get_average(idx - 1, long_n, table)
+            x = np.array([[plong - long, 1], [pshort - short, 1]])
+            y = np.array([plong, pshort])
+            try:
+                joint = np.linalg.solve(x, y)[1]
+                if joint < vwap:
+                    sell += 1
+                else:
+                    buy += 1
+            except LinAlgError:
+                pass
+    if buy > sell:
+        return 'BUY'
+    elif buy < sell:
+        return 'SELL'
     return ""
 
 
@@ -101,7 +120,7 @@ def fetch_his_data():
 
 def main():
     start_date = '2015-04-03'
-    end_date = '2016-04-10'
+    end_date = '2015-05-10'
     blotter, ledger = backtest(start_date, end_date)
     print(blotter)
     print(ledger)
