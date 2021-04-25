@@ -50,6 +50,10 @@ app.layout = html.Div([
         dash_table.DataTable(id='ledger', page_size=10)
     ]),
     html.Br(),
+    html.Div([
+    html.H2("All indexes"),
+        dash_table.DataTable(id='indexes', page_size=1)
+    ]),
     html.Br(),
     html.Br(),
 ])
@@ -61,21 +65,25 @@ app.layout = html.Div([
      dash.dependencies.Output('blotter', 'data'),
      dash.dependencies.Output('blotter', 'columns'),
      dash.dependencies.Output('ledger', 'data'),
-     dash.dependencies.Output('ledger', 'columns')],
+     dash.dependencies.Output('ledger', 'columns'),
+     dash.dependencies.Output('indexes', 'data'),
+     dash.dependencies.Output('indexes', 'columns')],
     dash.dependencies.Input('submit-button', 'n_clicks'),
     [dash.dependencies.State('date_ranger', 'start_date'),
      dash.dependencies.State('date_ranger', 'end_date')],
     prevent_initial_call=True
 )
 def show_graph(n_clicks, start_date, end_date):
-    blotter, ledger = backtest(start_date, end_date)
+    blotter, ledger, indexes = backtest(start_date, end_date)
     fig_ivv = px.line(x=ledger['date'], y=ledger['ivv_price'], labels={'x': "date", 'y': "ivv_price"})
     fig_strategy = px.line(x=ledger['date'], y=ledger['portfolio_value'], labels={'x': "date", 'y': "portfolio_value"})
     blot_columns = [{"name": i, "id": i} for i in blotter.columns]
     blot_data = blotter.to_dict('records')
     ledger_columns = [{"name": i, "id": i} for i in ledger.columns]
     ledger_data = ledger.to_dict('records')
-    return fig_ivv, fig_strategy, blot_data, blot_columns, ledger_data, ledger_columns
+    indexes_columns = [{"name": i, "id": i} for i in indexes.columns]
+    indexes_data = indexes.to_dict('records')
+    return fig_ivv, fig_strategy, blot_data, blot_columns, ledger_data, ledger_columns, indexes_data, indexes_columns
 
 
 if __name__ == '__main__':
