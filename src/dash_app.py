@@ -5,6 +5,10 @@ import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
+import pandas as pd
+from sklearn.linear_model import LinearRegression
+import numpy as np
+import plotly.graph_objects as go
 
 # Make a Dash app!
 from src.backtest import backtest
@@ -41,6 +45,11 @@ app.layout = html.Div([
     ]),
     html.Br(),
     html.Div([
+        html.H2("Linear Regression"),
+        dcc.Graph(id='linear_regression')
+    ]),
+    html.Br(),
+    html.Div([
         html.H2("Trade Blotter"),
         dash_table.DataTable(id='blotter', page_size=10)
     ]),
@@ -62,6 +71,7 @@ app.layout = html.Div([
 @app.callback(
     [dash.dependencies.Output('graph_ivv', 'figure'),
      dash.dependencies.Output('graph_strategy', 'figure'),
+     dash.dependencies.Output('linear_regression', 'figure'),
      dash.dependencies.Output('blotter', 'data'),
      dash.dependencies.Output('blotter', 'columns'),
      dash.dependencies.Output('ledger', 'data'),
@@ -83,7 +93,16 @@ def show_graph(n_clicks, start_date, end_date):
     ledger_data = ledger.to_dict('records')
     indexes_columns = [{"name": i, "id": i} for i in indexes.columns]
     indexes_data = indexes.to_dict('records')
-    return fig_ivv, fig_strategy, blot_data, blot_columns, ledger_data, ledger_columns, indexes_data, indexes_columns
+    x = ledger['ivv_price_change'].tolist()
+    y = ledger['portfolio_price_change'].tolist()
+    df = pd.DataFrame({'x': x, 'y': y})
+    reg = LinearRegression().fit(np.vstack(df['x']), y)
+    df['bestfit'] = reg.predict(np.vstack(df['x']))
+    fig_linear = go.Figure()
+    fig_linear.add_trace(go.Scatter(name='IVV vs Portfolio', x = df['x'], y =df['y'].values, mode = 'markers'))
+    fig_linear.add_trace(go.Scatter(name='line of best fit', x=x, y=df['bestfit'], mode='lines'))
+    fig_linear.update_layout(xaxis_title='IVV', yaxis_title='Portfolio')
+    return fig_ivv, fig_strategy, fig_linear, blot_data, blot_columns, ledger_data, ledger_columns, indexes_data, indexes_columns
 
 
 if __name__ == '__main__':
