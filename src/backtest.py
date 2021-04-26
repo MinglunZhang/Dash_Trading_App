@@ -10,6 +10,10 @@ min_short = 5
 max_short = 7
 min_long = 10
 max_long = 13
+buy_percent = 0.5
+sell_percent = 0.5
+buy_signal_strength = 0
+sell_signal_strength = 0
 
 
 def get_average(idx, n, table):
@@ -43,9 +47,9 @@ def get_signal(idx, table):
                     buy += 1
             except LinAlgError:
                 pass
-    if buy > sell:
+    if buy - sell - buy_signal_strength > 0:
         return 'BUY'
-    elif buy < sell:
+    elif sell - buy - sell_signal_strength > 0:
         return 'SELL'
     return ""
 
@@ -63,12 +67,12 @@ def trade(idx, table, blotter, ledger):
     last_price = float(table['Open'].iloc[idx - 1])
     delta_ivv = price / last_price - 1
     if action == "BUY":
-        cost = cash / 2
+        cost = cash * buy_percent
         size = cost / price
         cash -= cost
         position += size
     elif action == "SELL":
-        size = position / 2
+        size = position * sell_percent
         gain = size * price
         cash += gain
         position -= size
@@ -81,12 +85,22 @@ def trade(idx, table, blotter, ledger):
     delta_p = p_value / last_p_value - 1
     blotter.loc[len(blotter.index)] = [the_date, the_id, action, "IVV", round(size, 2), price, "MARKET", "FILLED"]
     ledger.loc[len(ledger.index)] = [the_date, round(position, 2), price, round(cash, 2), round(p_value, 2),
-                                     round(p_return,4), round(delta_ivv,4),
+                                     round(p_return, 4), round(delta_ivv, 4),
                                      round(delta_p, 4)]
     return blotter, ledger
 
 
-def backtest(start_date, end_date):
+def backtest(start_date, end_date, min_sn, max_sn, min_ln, max_ln, buy_p, sell_p, bss, sss):
+    global min_short, max_short, min_long, max_long, buy_percent, sell_percent, buy_signal_strength, sell_signal_strength
+    min_short = min_sn
+    max_short = max_sn
+    min_long = min_ln
+    max_long = max_ln
+    buy_percent = buy_p
+    sell_percent = sell_p
+    buy_signal_strength = bss
+    sell_signal_strength = sss
+
     table = fetch_his_data()
     real_start = date_to_time(start_date)
     real_end = date_to_time(end_date)
@@ -113,17 +127,19 @@ def backtest(start_date, end_date):
         start_idx += 1
 
     # calculate main deliverables
-    indexes = pd.DataFrame(None, columns = ['R', 'R²', 'σ IVV', 'σ Portfolio', 'σ² IVV', 'σ² Portfolio', 'Covariance', "α", 'β'])
+    indexes = pd.DataFrame(None,
+                           columns=['R', 'R²', 'σ IVV', 'σ Portfolio', 'σ² IVV', 'σ² Portfolio', 'Covariance', "α",
+                                    'β'])
     ivv_change = ledger['ivv_price_change']
     portfolio_change = ledger['portfolio_price_change']
-    r = np.corrcoef(ivv_change, portfolio_change)[0,1]
+    r = np.corrcoef(ivv_change, portfolio_change)[0, 1]
     r_sq = pow(r, 2)
-    beta, alpha = np.polyfit(ivv_change, portfolio_change,1)
+    beta, alpha = np.polyfit(ivv_change, portfolio_change, 1)
     sig_ivv = np.std(ivv_change)
     sig_ivv_sq = pow(sig_ivv, 2)
     sig_port = np.std(portfolio_change)
     sig_port_sq = pow(sig_port, 2)
-    cov = np.cov(ivv_change, portfolio_change)[0,1]
+    cov = np.cov(ivv_change, portfolio_change)[0, 1]
     indexes.loc[len(indexes.index)] = [r, r_sq, sig_ivv, sig_port, sig_ivv_sq, sig_port_sq, cov, alpha, beta]
     return blotter, ledger, indexes
 
@@ -145,7 +161,7 @@ def fetch_his_data():
 def main():
     start_date = '2015-04-03'
     end_date = '2015-05-10'
-    blotter, ledger, indexes = backtest(start_date, end_date)
+    blotter, ledger, indexes = backtest(start_date, end_date, 5, 6, 10, 11, 0.5, 0.5, 0, 0)
     print(blotter)
     print(ledger)
     print(indexes)
