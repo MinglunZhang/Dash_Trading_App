@@ -15,7 +15,6 @@ sell_percent = 0.5
 buy_signal_strength = 0
 sell_signal_strength = 0
 
-
 def get_average(idx, n, table):
     high = table['High']
     low = table['Low']

@@ -166,7 +166,6 @@ app.layout = html.Div([
     prevent_initial_call=True
 )
 def show_graph(n_clicks, start_date, end_date, small_n, large_n, buy_p, sell_p, bss, sss):
-    print(buy_p)
     blotter, ledger, indexes = backtest(start_date, end_date, small_n[0], small_n[1], large_n[0], large_n[1], buy_p,
                                         sell_p, bss, sss)
     fig_ivv = px.line(x=ledger['date'], y=ledger['ivv_price'], labels={'x': "date", 'y': "ivv_price"})
